@@ -1,3 +1,3 @@
-This is the link to the deployed APP
+Project for the Fullstack Course from the University of Helsinki
 
-[App on Render]https://phone-book-uh.onrender.com
+[App on Render](https://phone-book-uh.onrender.com)
