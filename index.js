@@ -38,9 +38,9 @@ app.get('/info', (request, response) => {
   Person.countDocuments({}).then(count =>
     response.send(
       `
-            <p>Phonebook has info for ${count} people</p>
-            <p>${Date()}
-            `
+      <p>Phonebook has info for ${count} people</p>
+      <p>${Date()}
+      `
     )
   )
 })
