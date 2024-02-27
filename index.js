@@ -2,7 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
-const Person = require('./models/persons')
+const Person = require('./models/person')
 const app = express()
 app.use(cors())
 app.use(express.static('dist'))
@@ -24,7 +24,7 @@ app.get('/', (request, response) => {
     response.send('<h1>Hello World</h1>')
 })
 
-// STEP 1
+// Backend STEP 1 & Databse STEP 1
 app.get('/api/persons', (request, response) => {
     Person.find({}).then(p => {
         response.json(p)
@@ -33,67 +33,101 @@ app.get('/api/persons', (request, response) => {
 })
 
 
-// STEP 2
+// Backend STEP 2 & Database STEP 1
 app.get('/info', (request, response) => {
-    const amount = Person.find({}).length
-    response.send(
-    `
-    <p>Phonebook has info for ${amount} people</p>
-    <p>${Date()}
-    `
-    )
+    const amount = Person.countDocuments({}).then(count => 
+        response.send(
+            `
+            <p>Phonebook has info for ${count} people</p>
+            <p>${Date()}
+            `
+        )
+        )
 })
 
-// STEP 3
+// Backend STEP 3 & Database STEP 1
 app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
-    if (person) {
-        response.json(person)
-    } else {
-        response.status(404).end()
-    }
+    Person.findById(request.params.id)
+        .then(p => {
+            if (p) {
+                response.json(p)
+            } else {
+                response.status(404).end()
+            }
+        })
+        .catch(error => {
+            console.log(error)
+            response.status(400).send({ error: 'malformatted id'})
+        })
 })
 
-// STEP 4
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
-
-    response.status(204).end()
+// Backend STEP 4 & Database STEP 3
+app.delete('/api/persons/:id', (request, response, next) => {
+    Person.findByIdAndDelete(request.params.id)
+        .then(result => {
+            // console.log(`Deleted id ${request.params.id}`)
+            response.status(204).end()
+        })
+        .catch(error => next(error))
 })
 
 
-// STEP 5 & STEP 6
-app.post('/api/persons', (request, response) => {
-    const body = request.body
-     // console.log(body)
+// Backend STEP 5 & STEP 6 & Database STEP 2
+app.post('/api/persons', (request, response, next) => {
+    const name = request.body.name
+    const number = request.body.number
 
-    if (!body.name) {
-        return response.status(400).json({ error: 'no name has been added'})
-    } else {
-        const names = persons.map(p => p.name === body.name)
-        if (names.includes(true)) {
-            return response.status(400).json({ error: 'this user already exists'})
-        }
+    if (!name || !number) {
+        return response.status(400).json({ error: 'name and number are necessary'})
     }
 
-    if (!body.number){
-        return response.status(400).json({ error: 'no number has been given'})
-    }
+    const person = new Person({
+        name: name,
+        number: number
+    })
+    
+    person.save()
+        .then(p => response.json(p))
+        // Database STEP 7
+        .catch(error => next(error))
+})
+
+// Database STEP 5
+app.put('/api/persons/:id', (request, response, next) => {
+    const name = request.body.name
+    const number = request.body.number
 
     const person = {
-        id: Math.random() * (10000),
-        name: body.name,
-        number: body.number
+        name: name,
+        number: number
     }
-    
-    persons = persons.concat(person)
 
-    response.json(person)
+    Person.findByIdAndUpdate(
+        request.params.id, 
+        person, 
+        {new: true, runValidators: true, context: 'query'}
+        )
+        .then(update => {
+            response.json(update)
+        })
+        .catch(error => next(error))
 })
 
 app.use(unknownEndpoint)
+
+
+// Database STEP 4
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+
+    if (error.name === 'CastError') {
+        return response.status(400).send({error : 'malformatted id'})
+    } else if (error.name === 'ValidationError') {
+        return response.status(400).json({error: error.message})
+    }
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
