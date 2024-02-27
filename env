@@ -1,2 +1,0 @@
-MONGODB_URI=mongodb+srv://testeo:testeo@cluster0.bogphdh.mongodb.net/phoneApp?retryWrites=true&w=majority&appName=Cluster0
-PORT=3001
